@@ -56,6 +56,7 @@ docker-compose.yml        timescaledb + pg_isready healthcheck
 | Pipeline entrypoint | `main.py` | `feat` |
 | Parity tests + golden snapshot | `tests/test_parity.py`, `tests/golden/` | `test` |
 | README + context | `README.md`, `context.md` | `docs` |
+| CI: pytest vs TimescaleDB service container | `.github/workflows/tests.yml` | `ci` |
 
 ## Design invariants (baked in from commit 1)
 
