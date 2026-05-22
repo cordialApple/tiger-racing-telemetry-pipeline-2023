@@ -1,0 +1,32 @@
+{
+  "source_file": "1.csv",
+  "session_id": "1",
+  "started_at": "2023-10-07T14:29:00-05:00",
+  "sample_rate_hz": 20,
+  "duration_s": 90,
+  "vehicle": "22",
+  "championship": "UTA Autocross 23",
+  "row_count": 1800,
+  "reading_count": 147600,
+  "sensor_count": 82,
+  "time_column_present": false,
+  "rpm_first3": [
+    [
+      "2023-10-07T14:29:00-05:00",
+      647.0
+    ],
+    [
+      "2023-10-07T14:29:00.050000-05:00",
+      647.0
+    ],
+    [
+      "2023-10-07T14:29:00.100000-05:00",
+      647.0
+    ]
+  ],
+  "rpm_spacing_ms": 50.0,
+  "rpm_min": 363.8431,
+  "rpm_max": 6860.6284,
+  "rpm_avg": 3003.01,
+  "rpm_n": 1800
+}
