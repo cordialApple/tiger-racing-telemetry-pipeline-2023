@@ -75,3 +75,7 @@ pytest
 
 Unit and parser-parity tests run without a database. The repository and DB-backed
 parity tests run against a live TimescaleDB and skip when one is not available.
+
+CI (`.github/workflows/tests.yml`) runs the full suite on push and PR against a
+`timescale/timescaledb` service container, so the DB-backed tests — including the
+hypertable and continuous-aggregate DDL — actually execute there.
