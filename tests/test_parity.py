@@ -86,3 +86,14 @@ def test_api_matches_reference(loaded_db):
     assert round(stats["min_value"], 4) == GOLDEN["rpm_min"]
     assert round(stats["max_value"], 4) == GOLDEN["rpm_max"]
     assert round(stats["avg_value"], 2) == round(GOLDEN["rpm_avg"], 2)
+
+
+def test_reading_views_share_one_schema(loaded_db):
+    cols = {"session_id", "sensor_name", "ts", "t_seconds",
+            "value", "avg_value", "min_value", "max_value"}
+    with loaded_db.connection() as conn:
+        for view in ("v_sensor_readings", "v_sensor_1hz_enriched"):
+            row = conn.execute(
+                f"SELECT * FROM {view} WHERE session_id = '1' LIMIT 1"
+            ).description
+            assert {c.name for c in row} >= cols
