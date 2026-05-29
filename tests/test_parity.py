@@ -55,7 +55,8 @@ def loaded_db():
     if available is None:
         pytest.skip("timescaledb extension not available")
 
-    SchemaManager(db).apply()
+    sm = SchemaManager(db)
+    sm.apply()
     repo = ReadingRepository()
     parsed = AimParser().parse(config.RAW_DIR / "1.csv")
     with db.connection() as conn:
@@ -64,6 +65,7 @@ def loaded_db():
         repo.insert_session(conn, parsed.session)
         n = repo.copy_readings(conn, parsed.session.session_id, parsed.readings)
         repo.log_ingestion(conn, parsed.packet_id, "1", "1.csv", parsed.row_count, n)
+    sm.refresh_views()
     yield db
     with db.connection() as conn:
         _purge(conn)
@@ -109,3 +111,46 @@ def test_channels_view_has_signal_and_units(loaded_db):
     assert rpm[1] == "rpm" and rpm[2] == 0 and rpm[3] == 14000
     assert rpm[4] is True
     assert rows["ECU WheelSpdFL"][4] is False
+
+
+def test_readings_raw_envelope(loaded_db):
+    client = TestClient(api.app)
+    body = client.get("/readings", params={
+        "session_id": "1", "sensor": "ECU RPM", "downsample": "raw", "limit": 5,
+    }).json()
+    assert body["total"] == GOLDEN["rpm_n"] and body["count"] == 5
+    first = body["rows"][0]
+    assert set(first) == {"session_id", "sensor_name", "ts", "t_seconds",
+                          "value", "avg_value", "min_value", "max_value"}
+    assert first["t_seconds"] == 0.0
+    assert round(first["value"], 4) == GOLDEN["rpm_first3"][0][1]
+    assert first["min_value"] == first["max_value"] == first["value"]
+
+
+def test_readings_1hz_returns_data_after_refresh(loaded_db):
+    client = TestClient(api.app)
+    body = client.get("/readings", params={
+        "session_id": "1", "sensor": "ECU RPM", "downsample": "1hz", "limit": 5,
+    }).json()
+    assert body["total"] > 0 and body["count"] > 0
+
+
+def test_readings_all_channels_when_sensor_omitted(loaded_db):
+    client = TestClient(api.app)
+    body = client.get("/readings", params={
+        "session_id": "1", "downsample": "1hz", "limit": 100,
+    }).json()
+    assert body["sensor"] is None
+    assert len({r["sensor_name"] for r in body["rows"]}) > 1
+
+
+def test_readings_pagination_is_stable(loaded_db):
+    client = TestClient(api.app)
+    p1 = client.get("/readings", params={
+        "session_id": "1", "sensor": "ECU RPM", "downsample": "raw",
+        "limit": 3, "offset": 0}).json()
+    p2 = client.get("/readings", params={
+        "session_id": "1", "sensor": "ECU RPM", "downsample": "raw",
+        "limit": 3, "offset": 3}).json()
+    assert p1["total"] == p2["total"] == GOLDEN["rpm_n"]
+    assert [r["ts"] for r in p1["rows"]] != [r["ts"] for r in p2["rows"]]
