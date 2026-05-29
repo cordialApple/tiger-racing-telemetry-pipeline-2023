@@ -97,3 +97,15 @@ def test_reading_views_share_one_schema(loaded_db):
                 f"SELECT * FROM {view} WHERE session_id = '1' LIMIT 1"
             ).description
             assert {c.name for c in row} >= cols
+
+
+def test_channels_view_has_signal_and_units(loaded_db):
+    with loaded_db.connection() as conn:
+        rows = {r[0]: r for r in conn.execute(
+            "SELECT sensor_name, unit, min_range, max_range, has_signal "
+            "FROM v_session_channels WHERE session_id = '1'"
+        ).fetchall()}
+    rpm = rows["ECU RPM"]
+    assert rpm[1] == "rpm" and rpm[2] == 0 and rpm[3] == 14000
+    assert rpm[4] is True
+    assert rows["ECU WheelSpdFL"][4] is False
