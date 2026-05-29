@@ -54,18 +54,42 @@ reported and left in `data/raw` for retry; the rest of the batch continues.
 ## Views (PowerBI)
 
 - `v_session_catalog` — session list with reading counts.
-- `v_sensor_readings` — readings with unit and elapsed seconds.
+- `v_sensor_readings` — raw long-format readings with unit, elapsed seconds, and
+  `value` mirrored as `avg_value`/`min_value`/`max_value` so the raw feed shares
+  one column set with the 1 Hz feed.
 - `v_session_sensor_stats` — per session/sensor count, avg, min, max.
-- `v_sensor_1hz` — 1 Hz continuous aggregate for plotting full sessions cheaply.
+- `v_sensor_1hz` — 1 Hz TimescaleDB continuous aggregate (`bucket`, `avg`/`min`/`max`).
+- `v_sensor_1hz_enriched` — `v_sensor_1hz` joined to session and sensor metadata
+  (exposes `ts`, `t_seconds`, `unit`, and the same `value`/`avg`/`min`/`max`
+  columns as `v_sensor_readings`).
+- `v_session_channels` — channel dimension per session: sensor spec metadata
+  plus `n`/`avg`/`min`/`max` from the stats view and a `has_signal` flag
+  (`false` when both min and max are 0).
 
 ## PowerBI connection
 
-Point PowerBI's Web/JSON connector at `http://localhost:8000`:
+Point PowerBI's Web/JSON connector at `http://localhost:8000`. Each endpoint
+returns one fixed column set, validated by Pydantic `response_model`:
 
-- `GET /sessions`
-- `GET /sessions/{session_id}/sensors`
-- `GET /readings?session_id=&sensor=&start=&end=&downsample=1hz|raw&limit=`
-- `GET /stats?session_id=&sensor=`
+- `GET /sessions` — Sessions dimension (from `v_session_catalog`).
+- `GET /sessions/{session_id}/sensors` — Channel dimension (from
+  `v_session_channels`).
+- `GET /readings?session_id=&sensor=&start=&end=&downsample=1hz|raw&limit=&offset=` —
+  paginated envelope `{session_id, sensor, downsample, limit, offset, total,
+  count, rows}`. Omit `sensor` for the full long-format fact feed (all channels);
+  supply it to drill into one channel. `raw` and `1hz` rows have the same eight
+  columns. `total` enables PowerBI to page deterministically.
+- `GET /stats?session_id=&sensor=` — pre-aggregated fact (from
+  `v_session_sensor_stats`).
+
+The star-schema mapping in PowerBI:
+
+- `Sessions[session_id]` one-to-many `Readings[session_id]`
+- `Channels[session_id, sensor_name]` one-to-many `Readings[sensor_name]`
+- `Stats` relates by both keys as a parallel summary fact
+
+The live OpenAPI schema for setting up the connector is served at
+`http://localhost:8000/docs`.
 
 ## Tests
 

@@ -71,6 +71,9 @@ docker-compose.yml        timescaledb + pg_isready healthcheck
   f-string SQL; all user values parameterized with `%s`.
 - Bulk load via psycopg3 `COPY`; schema DDL applied per-statement under autocommit.
 - Pipeline isolates failures per file (`FileResult(status="error")`) and continues.
+- API exposes one fixed column set per endpoint; `/readings` returns a paginated
+  envelope with a view chosen from a closed `downsample` map; raw and 1 Hz share
+  the reading schema.
 
 ## Data contract (parser/models.py)
 
