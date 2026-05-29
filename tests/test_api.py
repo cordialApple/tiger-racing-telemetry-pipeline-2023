@@ -20,6 +20,13 @@ STATS = [
      "min_value": 800.0, "max_value": 12000.0},
 ]
 
+CHANNELS = [{
+    "session_id": "s1", "sensor_name": "ECU RPM", "description": "Engine RPM",
+    "unit": "rpm", "data_type": "integer", "min_range": 0, "max_range": 14000,
+    "n": 1800, "avg_value": 3003.0, "min_value": 363.8, "max_value": 6860.6,
+    "has_signal": True,
+}]
+
 ROW = {"session_id": "s1", "sensor_name": "rpm", "ts": "2023-01-01T00:00:00Z",
        "t_seconds": 0.0, "value": 800.0, "avg_value": 800.0,
        "min_value": 800.0, "max_value": 800.0}
@@ -58,11 +65,13 @@ def test_sessions(monkeypatch):
     assert client.get("/sessions").json() == CATALOG
 
 
-def test_session_sensors(monkeypatch):
-    patch_query(monkeypatch, [{"sensor_name": "rpm"}, {"sensor_name": "speed"}])
-    assert client.get("/sessions/s1/sensors").json() == [
-        {"sensor_name": "rpm"}, {"sensor_name": "speed"}
-    ]
+def test_session_sensors_returns_channel_dimension(monkeypatch):
+    capture = []
+    patch_query(monkeypatch, CHANNELS, capture)
+    body = client.get("/sessions/s1/sensors").json()
+    assert body == CHANNELS
+    sql, params = capture[0]
+    assert "v_session_channels" in sql and params == ["s1"]
 
 
 def test_readings_requires_session_id():
